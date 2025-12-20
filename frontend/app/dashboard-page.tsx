@@ -10,7 +10,10 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { MOCK_AUDIT_HISTORY } from '@/lib/data';
 
+import { useAuth } from '@/lib/auth-context';
+
 export default function Dashboard() {
+  const { user } = useAuth();
   // Calculate stats
   const totalAudits = MOCK_AUDIT_HISTORY.length;
   const highRisk = MOCK_AUDIT_HISTORY.filter(a => a.riskLevel === 'High').length;
@@ -29,7 +32,7 @@ export default function Dashboard() {
             transition={{ duration: 0.5 }}
           >
             <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
-              Welcome back, Dr. Chen
+              Welcome back, {user?.name || 'Doctor'}
             </h1>
             <p className="text-lg text-slate-400 max-w-2xl">
               Your audit compliance score is <span className="text-teal-400 font-semibold">92%</span> this month. 
@@ -214,4 +217,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
 
