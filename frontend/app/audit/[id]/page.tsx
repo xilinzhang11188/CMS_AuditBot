@@ -166,6 +166,35 @@ export default function AuditResult() {
                 </CardContent>
               </Card>
             </motion.div>
+
+            {/* Clinical Note Preview */}
+            {result.noteText && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+              >
+                <Card className="border-white/10">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <FileText className="w-5 h-5 text-blue-400 mr-2" />
+                      Clinical Note (PHI Stripped)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-slate-900/50 rounded-lg p-4 border border-white/5 max-h-64 overflow-y-auto">
+                      <p className="text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                        {result.noteText}
+                      </p>
+                    </div>
+                    <div className="mt-2 flex items-center text-xs text-slate-500">
+                      <Info className="w-3 h-3 mr-1" />
+                      Patient identifiable information has been removed for privacy
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </div>
 
           {/* Right Column: Detailed Findings */}

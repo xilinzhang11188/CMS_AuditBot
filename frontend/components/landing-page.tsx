@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, FileText, CheckCircle, ArrowRight, Zap, Lock, TrendingUp } from 'lucide-react';
+import { ShieldCheck, FileText, CheckCircle, ArrowRight, Zap, Lock, TrendingUp, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 

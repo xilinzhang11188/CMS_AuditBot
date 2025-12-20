@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,10 +14,35 @@ import { useAuth } from '@/lib/auth-context';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [auditHistory, setAuditHistory] = useState(MOCK_AUDIT_HISTORY);
+
+  // Load audit history from localStorage on mount
+  useEffect(() => {
+    const storedHistory = localStorage.getItem('auditHistory');
+    if (storedHistory) {
+      try {
+        const parsed = JSON.parse(storedHistory);
+        setAuditHistory(parsed);
+      } catch (error) {
+        console.error('Failed to parse audit history:', error);
+        // Fallback to mock data if parsing fails
+        setAuditHistory(MOCK_AUDIT_HISTORY);
+        localStorage.setItem('auditHistory', JSON.stringify(MOCK_AUDIT_HISTORY));
+      }
+    } else {
+      // Initialize with mock data if no history exists
+      setAuditHistory(MOCK_AUDIT_HISTORY);
+      localStorage.setItem('auditHistory', JSON.stringify(MOCK_AUDIT_HISTORY));
+    }
+  }, []);
+
   // Calculate stats
-  const totalAudits = MOCK_AUDIT_HISTORY.length;
-  const highRisk = MOCK_AUDIT_HISTORY.filter(a => a.riskLevel === 'High').length;
-  const avgScore = Math.round(MOCK_AUDIT_HISTORY.reduce((acc, curr) => acc + curr.riskScore, 0) / totalAudits);
+  const totalAudits = auditHistory.length;
+  const highRisk = auditHistory.filter(a => a.riskLevel === 'High').length;
+  const avgScore = totalAudits > 0 ? Math.round(auditHistory.reduce((acc, curr) => acc + curr.riskScore, 0) / totalAudits) : 0;
+  
+  // Get recent audits (top 3)
+  const recentAudits = auditHistory.slice(0, 3);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-teal-500/30">
@@ -131,46 +156,62 @@ export default function Dashboard() {
             </div>
             
             <div className="space-y-4">
-              {MOCK_AUDIT_HISTORY.map((audit, index) => (
+              {recentAudits.length > 0 ? (
+                recentAudits.map((audit, index) => (
                 <motion.div
                   key={audit.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 * index }}
                 >
-                  <Card className="hover:bg-white/5 transition-colors cursor-pointer border-white/5">
-                    <CardContent className="p-4 flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center",
-                          audit.riskLevel === 'Low' ? "bg-teal-500/10 text-teal-400" :
-                          audit.riskLevel === 'Medium' ? "bg-amber-500/10 text-amber-400" :
-                          "bg-red-500/10 text-red-400"
-                        )}>
-                          {audit.riskLevel === 'Low' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                  <Link href={`/audit/${audit.id}`}>
+                    <Card className="hover:bg-white/5 transition-colors cursor-pointer border-white/5">
+                      <CardContent className="p-4 flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center",
+                            audit.riskLevel === 'Low' ? "bg-teal-500/10 text-teal-400" :
+                            audit.riskLevel === 'Medium' ? "bg-amber-500/10 text-amber-400" :
+                            "bg-red-500/10 text-red-400"
+                          )}>
+                            {audit.riskLevel === 'Low' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-white">CCM Code {audit.codeId}</h4>
+                            <p className="text-sm text-slate-400">
+                              {new Date(audit.date).toLocaleDateString()} • {audit.clinicalConditions.join(', ')}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-medium text-white">CCM Code {audit.codeId}</h4>
-                          <p className="text-sm text-slate-400">
-                            {new Date(audit.date).toLocaleDateString()} • {audit.clinicalConditions.join(', ')}
-                          </p>
+                        <div className="text-right">
+                          <span className={cn(
+                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                            audit.riskLevel === 'Low' ? "bg-teal-500/10 text-teal-400" :
+                            audit.riskLevel === 'Medium' ? "bg-amber-500/10 text-amber-400" :
+                            "bg-red-500/10 text-red-400"
+                          )}>
+                            {audit.riskLevel} Risk
+                          </span>
+                          <p className="text-sm font-bold text-white mt-1">{audit.riskScore}% Score</p>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <span className={cn(
-                          "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                          audit.riskLevel === 'Low' ? "bg-teal-500/10 text-teal-400" :
-                          audit.riskLevel === 'Medium' ? "bg-amber-500/10 text-amber-400" :
-                          "bg-red-500/10 text-red-400"
-                        )}>
-                          {audit.riskLevel} Risk
-                        </span>
-                        <p className="text-sm font-bold text-white mt-1">{audit.riskScore}% Score</p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 </motion.div>
-              ))}
+                ))
+              ) : (
+                <Card className="border-white/5">
+                  <CardContent className="p-8 text-center">
+                    <p className="text-slate-400">No audits yet. Create your first audit to get started!</p>
+                    <Link href="/audit/new">
+                      <Button className="mt-4">
+                        <Plus className="w-4 h-4 mr-2" />
+                        New Audit
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
 

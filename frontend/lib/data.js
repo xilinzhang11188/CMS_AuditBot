@@ -111,6 +111,13 @@ export const analyzeNote = async (text, codeId) => {
   const code = CCM_CODES.find(c => c.id === codeId);
   if (!code) throw new Error('Invalid code');
 
+  // Strip PHI from text (basic simulation - in production use proper PHI detection)
+  const strippedText = text
+    .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN REDACTED]')
+    .replace(/\b\d{10}\b/g, '[PHONE REDACTED]')
+    .replace(/\b[A-Z][a-z]+ [A-Z][a-z]+\b/g, '[PATIENT NAME]')
+    .replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, '[DATE]');
+
   // Mock analysis logic based on random factors or simple keyword checks if we had real text
   // For demo purposes, we'll generate a semi-random result
   const randomScore = Math.floor(Math.random() * 40) + 60; // 60-100
@@ -155,6 +162,7 @@ export const analyzeNote = async (text, codeId) => {
     riskScore: randomScore,
     missingRequirements: missing,
     metRequirements: met,
-    clinicalConditions: ['Hypertension', 'Hyperlipidemia'] // Mock extracted conditions
+    clinicalConditions: ['Hypertension', 'Hyperlipidemia'], // Mock extracted conditions
+    noteText: strippedText // Include PHI-stripped note text
   };
 };

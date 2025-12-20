@@ -15,20 +15,28 @@ export default function NewAudit() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [file, setFile] = useState(null);
+  const [pastedText, setPastedText] = useState('');
+  const [inputMethod, setInputMethod] = useState<'upload' | 'paste'>('upload');
   const [selectedCode, setSelectedCode] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleFileSelect = (uploadedFile) => {
     setFile(uploadedFile);
+    setPastedText(''); // Clear pasted text when file is selected
+  };
+
+  const handleTextPaste = (text: string) => {
+    setPastedText(text);
+    setFile(null); // Clear file when text is pasted
   };
 
   const handleAnalyze = async () => {
-    if (!file || !selectedCode) return;
+    if ((!file && !pastedText) || !selectedCode) return;
     
     setIsAnalyzing(true);
     try {
-      // Simulate reading file text
-      const text = "Simulated extracted text from file...";
+      // Use pasted text if available, otherwise simulate file text
+      const text = pastedText || "Simulated extracted text from file...";
       const result = await analyzeNote(text, selectedCode);
       
       // Store result in localStorage for the results page to pick up
@@ -88,21 +96,82 @@ export default function NewAudit() {
               className="space-y-6"
             >
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-white mb-2">Upload Clinical Note</h2>
-                <p className="text-slate-400">Upload your clinical documentation for automated compliance auditing.</p>
+                <h2 className="text-3xl font-bold text-white mb-2">Add Clinical Note</h2>
+                <p className="text-slate-400">Upload a file or paste your clinical documentation for automated compliance auditing.</p>
               </div>
 
               <div className="max-w-2xl mx-auto">
-                <FileUpload 
-                  selectedFile={file} 
-                  onFileSelect={handleFileSelect} 
-                  onClear={() => setFile(null)} 
-                />
+                {/* Input Method Toggle */}
+                <div className="flex items-center justify-center space-x-4 mb-6">
+                  <button
+                    onClick={() => setInputMethod('upload')}
+                    className={cn(
+                      "px-6 py-2 rounded-lg font-medium transition-all",
+                      inputMethod === 'upload'
+                        ? "bg-teal-500 text-white"
+                        : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                    )}
+                  >
+                    Upload File
+                  </button>
+                  <button
+                    onClick={() => setInputMethod('paste')}
+                    className={cn(
+                      "px-6 py-2 rounded-lg font-medium transition-all",
+                      inputMethod === 'paste'
+                        ? "bg-teal-500 text-white"
+                        : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                    )}
+                  >
+                    Paste Text
+                  </button>
+                </div>
+
+                {/* File Upload */}
+                {inputMethod === 'upload' && (
+                  <FileUpload
+                    selectedFile={file}
+                    onFileSelect={handleFileSelect}
+                    onClear={() => setFile(null)}
+                  />
+                )}
+
+                {/* Text Paste Area */}
+                {inputMethod === 'paste' && (
+                  <div className="space-y-4">
+                    <Card className="bg-slate-900 border-slate-800">
+                      <CardContent className="p-4">
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          Clinical Note Text
+                        </label>
+                        <textarea
+                          value={pastedText}
+                          onChange={(e) => handleTextPaste(e.target.value)}
+                          placeholder="Paste your clinical note text here..."
+                          className="w-full h-64 bg-slate-800 border border-slate-700 rounded-lg p-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
+                        />
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="text-xs text-slate-500">
+                            {pastedText.length} characters
+                          </p>
+                          {pastedText && (
+                            <button
+                              onClick={() => setPastedText('')}
+                              className="text-xs text-red-400 hover:text-red-300"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
                 
                 <div className="mt-8 flex justify-end">
-                  <Button 
-                    onClick={() => setStep(2)} 
-                    disabled={!file}
+                  <Button
+                    onClick={() => setStep(2)}
+                    disabled={!file && !pastedText}
                     size="lg"
                     className="w-full sm:w-auto"
                   >

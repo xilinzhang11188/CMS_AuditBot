@@ -9,14 +9,15 @@ export interface User {
   name: string;
   email: string;
   organization: string;
-  role: string;
+  role: 'provider' | 'manager';
+  organizationId?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, organization: string) => Promise<void>;
+  register: (name: string, email: string, password: string, organization: string, role?: 'provider' | 'manager') => Promise<void>;
   logout: () => void;
 }
 
@@ -41,13 +42,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Mock successful login
+    // Mock successful login - determine role based on email for demo
+    const isManager = email.toLowerCase().includes('manager') || email.toLowerCase().includes('maria');
     const mockUser: User = {
       id: '1',
-      name: 'Dr. Sarah Chen',
+      name: isManager ? 'Maria Rodriguez' : 'Dr. Sarah Chen',
       email: email,
       organization: 'City Medical Group',
-      role: 'Primary Care Physician'
+      role: isManager ? 'manager' : 'provider',
+      organizationId: 'org-1'
     };
     
     setUser(mockUser);
@@ -56,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/');
   };
 
-  const register = async (name: string, email: string, password: string, organization: string) => {
+  const register = async (name: string, email: string, password: string, organization: string, role: 'provider' | 'manager' = 'provider') => {
     setIsLoading(true);
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -66,7 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name,
       email,
       organization,
-      role: 'Provider'
+      role,
+      organizationId: 'org-1'
     };
     
     setUser(newUser);

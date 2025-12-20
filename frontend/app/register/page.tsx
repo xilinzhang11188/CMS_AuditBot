@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { ShieldCheck, Loader2, Mail, Lock, User, Building } from 'lucide-react';
+import { ShieldCheck, Loader2, Mail, Lock, User, Building, Users } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
@@ -14,13 +14,14 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [organization, setOrganization] = useState('');
+  const [role, setRole] = useState<'provider' | 'manager'>('provider');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await register(name, email, password, organization);
+      await register(name, email, password, organization, role);
     } catch (error) {
       console.error(error);
     } finally {
@@ -98,6 +99,40 @@ export default function RegisterPage() {
                     required
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-300">Role</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRole('provider')}
+                    className={`flex items-center justify-center px-4 py-3 rounded-lg border transition-all ${
+                      role === 'provider'
+                        ? 'bg-teal-500/10 border-teal-500/50 text-teal-400'
+                        : 'bg-slate-800 border-white/10 text-slate-400 hover:border-white/20'
+                    }`}
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Provider
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole('manager')}
+                    className={`flex items-center justify-center px-4 py-3 rounded-lg border transition-all ${
+                      role === 'manager'
+                        ? 'bg-teal-500/10 border-teal-500/50 text-teal-400'
+                        : 'bg-slate-800 border-white/10 text-slate-400 hover:border-white/20'
+                    }`}
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    Manager
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  {role === 'provider'
+                    ? 'Individual healthcare provider running audits'
+                    : 'Practice manager overseeing multiple providers'}
+                </p>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-300">Password</label>

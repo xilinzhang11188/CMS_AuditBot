@@ -4,18 +4,30 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { ShieldCheck, LayoutDashboard, History, Settings, LogOut, LogIn, UserPlus } from 'lucide-react';
+import { ShieldCheck, LayoutDashboard, History, Settings, LogOut, LogIn, UserPlus, Users, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 export function Navbar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
-  const navItems = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'History', href: '/history', icon: History },
-    { name: 'Settings', href: '/settings', icon: Settings },
-  ];
+  // Role-based navigation items
+  const getNavItems = () => {
+    if (user?.role === 'manager') {
+      return [
+        { name: 'Management', href: '/', icon: Users },
+        { name: 'Settings', href: '/settings', icon: Settings },
+      ];
+    }
+    return [
+      { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+      { name: 'New Audit', href: '/audit/new', icon: FileText },
+      { name: 'History', href: '/history', icon: History },
+      { name: 'Settings', href: '/settings', icon: Settings },
+    ];
+  };
+
+  const navItems = getNavItems();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-slate-900/80 backdrop-blur-xl">
@@ -68,7 +80,9 @@ export function Navbar() {
                   </div>
                   <div className="text-sm">
                     <p className="text-white font-medium">{user.name}</p>
-                    <p className="text-xs text-slate-400">{user.role}</p>
+                    <p className="text-xs text-slate-400">
+                      {user.role === 'manager' ? 'Manager' : 'Provider'}
+                    </p>
                   </div>
                 </div>
                 <button 
