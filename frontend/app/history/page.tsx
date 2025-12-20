@@ -3,18 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/navbar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { MOCK_AUDIT_HISTORY } from '@/lib/data';
-import { Search, Filter, Trash2, Eye, ArrowUpDown, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Search, Filter, Trash2, Eye, ArrowUpDown, CheckCircle, AlertTriangle, GitCompare } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 export default function HistoryPage() {
+  const router = useRouter();
   const [history, setHistory] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
 
   useEffect(() => {
-    // Load history from local storage or use mock if empty
     const stored = localStorage.getItem('auditHistory');
     if (stored) {
       setHistory(JSON.parse(stored));
@@ -33,6 +35,29 @@ export default function HistoryPage() {
     const newHistory = history.filter(item => item.id !== id);
     setHistory(newHistory);
     localStorage.setItem('auditHistory', JSON.stringify(newHistory));
+    setSelectedIds(selectedIds.filter(selectedId => selectedId !== id));
+  };
+
+  const toggleSelection = (id) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter(i => i !== id));
+    } else {
+      if (selectedIds.length < 3) {
+        setSelectedIds([...selectedIds, id]);
+      } else {
+        // Optional: Show toast that max 3 can be compared
+        alert("You can compare up to 3 audits at a time.");
+      }
+    }
+  };
+
+  const handleCompare = () => {
+    if (selectedIds.length < 2) return;
+    // Store selected IDs in URL or localStorage to pass to compare page
+    // Using query params is cleaner
+    const params = new URLSearchParams();
+    selectedIds.forEach(id => params.append('ids', id));
+    router.push(`/history/compare?${params.toString()}`);
   };
 
   return (
@@ -45,9 +70,22 @@ export default function HistoryPage() {
             <h1 className="text-3xl font-bold text-white">Audit History</h1>
             <p className="text-slate-400 mt-1">Review and manage your past clinical documentation audits.</p>
           </div>
-          <Link href="/audit/new">
-            <Button>New Audit</Button>
-          </Link>
+          <div className="flex gap-3">
+             {selectedIds.length > 0 && (
+              <Button 
+                variant="primary" 
+                onClick={handleCompare}
+                disabled={selectedIds.length < 2}
+                className={cn(selectedIds.length < 2 ? "opacity-50 cursor-not-allowed" : "")}
+              >
+                <GitCompare className="w-4 h-4 mr-2" /> 
+                Compare ({selectedIds.length})
+              </Button>
+            )}
+            <Link href="/audit/new">
+              <Button>New Audit</Button>
+            </Link>
+          </div>
         </div>
 
         <Card className="border-white/10 bg-slate-900/50">
@@ -78,6 +116,9 @@ export default function HistoryPage() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-white/5 text-slate-400 font-medium">
                   <tr>
+                    <th className="px-6 py-4 w-10">
+                      <span className="sr-only">Select</span>
+                    </th>
                     <th className="px-6 py-4">Date</th>
                     <th className="px-6 py-4">CCM Code</th>
                     <th className="px-6 py-4">Conditions</th>
@@ -89,7 +130,15 @@ export default function HistoryPage() {
                 <tbody className="divide-y divide-white/5">
                   {filteredHistory.length > 0 ? (
                     filteredHistory.map((audit) => (
-                      <tr key={audit.id} className="hover:bg-white/5 transition-colors">
+                      <tr key={audit.id} className={cn("hover:bg-white/5 transition-colors", selectedIds.includes(audit.id) ? "bg-teal-500/5" : "")}>
+                        <td className="px-6 py-4">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-slate-600 bg-slate-800 text-teal-500 focus:ring-teal-500/50"
+                            checked={selectedIds.includes(audit.id)}
+                            onChange={() => toggleSelection(audit.id)}
+                          />
+                        </td>
                         <td className="px-6 py-4 text-slate-300">
                           {new Date(audit.date).toLocaleDateString()}
                         </td>
@@ -145,7 +194,7 @@ export default function HistoryPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                      <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                         No audit history found.
                       </td>
                     </tr>
