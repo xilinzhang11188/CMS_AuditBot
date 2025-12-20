@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, FileText, AlertTriangle, CheckCircle, TrendingUp, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import { MOCK_AUDIT_HISTORY } from '@/lib/data';
 
 export default function Dashboard() {
@@ -213,3 +214,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
