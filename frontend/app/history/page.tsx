@@ -198,13 +198,13 @@ export default function HistoryPage() {
                             </td>
                             <td className="px-6 py-4 text-slate-300">
                               <div className="flex flex-wrap gap-1">
-                                {audit.clinicalConditions.slice(0, 2).map((c, i) => (
-                                  <span key={i} className="px-2 py-0.5 rounded-full bg-slate-800 text-xs border border-white/10">
+                                {audit.clinicalConditions.slice(0, 2).map((c) => (
+                                  <span key={c} className="px-2 py-0.5 rounded-full bg-slate-800 text-xs border border-white/10">
                                     {c}
                                   </span>
                                 ))}
                                 {audit.clinicalConditions.length > 2 && (
-                                  <span className="px-2 py-0.5 rounded-full bg-slate-800 text-xs border border-white/10">
+                                  <span key="more-conditions" className="px-2 py-0.5 rounded-full bg-slate-800 text-xs border border-white/10">
                                     +{audit.clinicalConditions.length - 2}
                                   </span>
                                 )}
@@ -284,7 +284,7 @@ export default function HistoryPage() {
                           return (
                             <Button
                               key={pageNum}
-                              variant={page === pageNum ? "default" : "secondary"}
+                              variant={page === pageNum ? "primary" : "secondary"}
                               size="sm"
                               onClick={() => setPage(pageNum)}
                               className="w-8"

@@ -10,7 +10,7 @@ from app.models.audit import AuditCreate, Audit, AuditResponse, AuditHistoryResp
 from app.models.user import User
 from app.middleware.auth import get_current_user
 from app.database import mongodb
-from app.services.openai_service import analyze_clinical_note
+from app.services.openai_service_simple import analyze_clinical_note
 from app.services.phi_stripper import strip_phi_from_text
 
 logger = logging.getLogger(__name__)
@@ -146,6 +146,7 @@ async def analyze_audit(
         
         # 10. Create response
         audit = Audit(**audit_doc)
+        logger.info(f"Created audit response with ID: {audit.id}")
         
         return AuditResponse(
             audit=audit,

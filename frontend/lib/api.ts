@@ -3,11 +3,11 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Types
 export interface Audit {
-  _id: string;
-  providerId: string;
+  id: string;
+  userId: string;
   organizationId: string;
-  ccmCode: string;
-  clinicalNoteText: string;
+  codeId: string;
+  noteText: string;
   riskLevel: 'low' | 'medium' | 'high';
   riskScore: number;
   missingRequirements: Array<{
@@ -18,7 +18,7 @@ export interface Audit {
   metRequirements: string[];
   clinicalConditions: string[];
   createdAt: string;
-  updatedAt: string;
+  deletedAt?: string;
 }
 
 export interface CCMCode {
@@ -70,10 +70,10 @@ export interface ProviderStats {
 }
 
 // API functions
-export async function fetchAudits(): Promise<Audit[]> {
+export async function fetchAudits(limit: number = 50, skip: number = 0): Promise<Audit[]> {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_BASE_URL}/api/v1/audits`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/audits?limit=${limit}&skip=${skip}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -94,6 +94,7 @@ export async function fetchAudits(): Promise<Audit[]> {
 export async function fetchOrganizationQuota(): Promise<{ used: number; limit: number }> {
   try {
     const token = localStorage.getItem('authToken');
+    console.log('DEBUG: Fetching quota from:', `${API_BASE_URL}/api/v1/organizations/quota`);
     const response = await fetch(`${API_BASE_URL}/api/v1/organizations/quota`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -101,7 +102,9 @@ export async function fetchOrganizationQuota(): Promise<{ used: number; limit: n
       },
     });
     
+    console.log('DEBUG: Quota response status:', response.status);
     if (!response.ok) {
+      console.error('DEBUG: Quota fetch failed with status:', response.status);
       throw new Error('Failed to fetch quota');
     }
     
@@ -193,6 +196,8 @@ export async function uploadClinicalNote(file: File): Promise<ClinicalNoteUpload
 export async function analyzeAudit(request: AnalyzeAuditRequest): Promise<AnalyzeAuditResponse> {
   try {
     const token = localStorage.getItem('authToken');
+    console.log('DEBUG: Sending analyze request:', request);
+    
     const response = await fetch(`${API_BASE_URL}/api/v1/audits/analyze`, {
       method: 'POST',
       headers: {
@@ -202,14 +207,119 @@ export async function analyzeAudit(request: AnalyzeAuditRequest): Promise<Analyz
       body: JSON.stringify(request),
     });
 
+    console.log('DEBUG: Analyze response status:', response.status);
+    
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('DEBUG: Analyze error data:', errorData);
       throw new Error(errorData.detail || 'Failed to analyze audit');
+    }
+
+    const responseData = await response.json();
+    console.log('DEBUG: Full analyze response:', responseData);
+    console.log('DEBUG: Audit object:', responseData.audit);
+    console.log('DEBUG: Audit ID:', responseData.audit?.id);
+    
+    return responseData;
+  } catch (error) {
+    console.error('Error analyzing audit:', error);
+    throw error;
+  }
+}
+
+export interface AuditHistoryParams {
+  search?: string;
+  riskLevel?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AuditHistoryResponse {
+  audits: Audit[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export async function fetchAuditHistory(params: AuditHistoryParams = {}): Promise<AuditHistoryResponse> {
+  try {
+    const token = localStorage.getItem('authToken');
+    const searchParams = new URLSearchParams();
+    
+    if (params.search) searchParams.append('search', params.search);
+    if (params.riskLevel) searchParams.append('riskLevel', params.riskLevel);
+    if (params.startDate) searchParams.append('startDate', params.startDate);
+    if (params.endDate) searchParams.append('endDate', params.endDate);
+    if (params.page) searchParams.append('page', params.page.toString());
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/audits/history?${searchParams.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to fetch audit history');
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error analyzing audit:', error);
+    console.error('Error fetching audit history:', error);
+    throw error;
+  }
+}
+
+export async function deleteAudit(auditId: string): Promise<void> {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(`${API_BASE_URL}/api/v1/audits/${auditId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to delete audit');
+    }
+  } catch (error) {
+    console.error('Error deleting audit:', error);
+    throw error;
+  }
+}
+
+export async function fetchAuditById(auditId: string): Promise<Audit> {
+  try {
+    const token = localStorage.getItem('authToken');
+    console.log('DEBUG: Fetching audit by ID:', auditId);
+    console.log('DEBUG: Audit URL:', `${API_BASE_URL}/api/v1/audits/${auditId}`);
+    
+    const response = await fetch(`${API_BASE_URL}/api/v1/audits/${auditId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('DEBUG: Audit fetch response status:', response.status);
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('DEBUG: Audit fetch error data:', errorData);
+      throw new Error(errorData.detail || 'Audit not found');
+    }
+
+    const auditData = await response.json();
+    console.log('DEBUG: Received audit data:', auditData);
+    return auditData;
+  } catch (error) {
+    console.error('Error fetching audit:', error);
     throw error;
   }
 }

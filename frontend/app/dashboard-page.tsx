@@ -32,8 +32,8 @@ export default function Dashboard() {
         ]);
         
         setAuditHistory(audits);
-        setQuotaUsed(quota.quotaUsed);
-        setQuotaLimit(quota.quotaLimit);
+        setQuotaUsed(quota.used);
+        setQuotaLimit(quota.limit);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
       } finally {

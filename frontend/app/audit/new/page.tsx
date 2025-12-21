@@ -97,8 +97,22 @@ export default function NewAudit() {
         noteId: noteId || undefined
       });
       
+      console.log('DEBUG: Analysis response:', response);
+      console.log('DEBUG: Audit object:', response.audit);
+      console.log('DEBUG: Audit ID from response.audit.id:', response.audit.id);
+      console.log('DEBUG: Audit ID from response.audit._id:', (response.audit as any)._id);
+      
       // Navigate to the audit detail page with the audit ID
-      router.push(`/audit/${response.audit.id}`);
+      // Backend uses _id as the field name in JSON, but frontend expects id
+      const auditId = response.audit.id || (response.audit as any)._id;
+      if (auditId) {
+        router.push(`/audit/${auditId}`);
+      } else {
+        console.error('ERROR: No audit ID in response');
+        console.error('DEBUG: Full audit object:', JSON.stringify(response.audit, null, 2));
+        setUploadError('Analysis completed but no audit ID received');
+        setIsAnalyzing(false);
+      }
     } catch (error) {
       console.error("Analysis failed", error);
       setUploadError(error instanceof Error ? error.message : 'Failed to analyze audit');
