@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Navbar } from '@/components/navbar';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { fetchManagementAudits, fetchProviders, AuditWithProvider, ProviderStats } from '@/lib/api';
 
-export default function AllAuditsPage() {
+function AllAuditsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [audits, setAudits] = useState<AuditWithProvider[]>([]);
@@ -353,7 +353,7 @@ export default function AllAuditsPage() {
                       <span className="text-slate-500">...</span>
                     )}
                     <Button
-                      variant={currentPage === page ? "default" : "outline"}
+                      variant={currentPage === page ? "primary" : "outline"}
                       size="sm"
                       onClick={() => setCurrentPage(page)}
                       className={cn(
@@ -391,5 +391,26 @@ export default function AllAuditsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <Navbar />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-4">Loading audits...</h2>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function AllAuditsPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AllAuditsPageContent />
+    </Suspense>
   );
 }

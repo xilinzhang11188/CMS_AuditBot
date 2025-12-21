@@ -3,7 +3,12 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-const Button = React.forwardRef(({ className, variant = 'primary', size = 'default', ...props }, ref) => {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({ className, variant = 'primary', size = 'default', ...props }, ref) => {
   const variants = {
     primary: "bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-500 hover:to-blue-500 text-white shadow-lg shadow-teal-500/20",
     secondary: "bg-white/10 border border-white/20 text-white hover:bg-white/20 backdrop-blur-sm",

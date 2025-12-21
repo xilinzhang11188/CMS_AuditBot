@@ -11,6 +11,22 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { fetchAuditById, Audit } from '@/lib/api';
 
+interface AuditResult {
+  id: string;
+  date: string;
+  codeId: string;
+  riskLevel: 'Low' | 'Medium' | 'High';
+  riskScore: number;
+  clinicalConditions: string[];
+  missingRequirements: Array<{
+    requirement: string;
+    explanation: string;
+    suggestion: string;
+  }>;
+  metRequirements: string[];
+  noteText?: string;
+}
+
 export default function AuditResult() {
   const params = useParams();
   const router = useRouter();
@@ -32,7 +48,6 @@ export default function AuditResult() {
         setLoading(false);
       }
     }
-
     if (params.id) {
       loadAudit();
     }
@@ -174,7 +189,7 @@ export default function AuditResult() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
-                    {result.clinicalConditions.map((condition, i) => (
+                    {result.clinicalConditions.map((condition: string, i: number) => (
                       <span key={i} className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-sm border border-blue-500/20">
                         {condition}
                       </span>
@@ -235,7 +250,7 @@ export default function AuditResult() {
                       <p>Great job! No missing requirements detected.</p>
                     </div>
                   ) : (
-                    result.missingRequirements.map((item, index) => (
+                    result.missingRequirements.map((item: any, index: number) => (
                       <div key={index} className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
                         <div className="flex items-start">
                           <div className="flex-shrink-0 mt-0.5">
@@ -247,7 +262,7 @@ export default function AuditResult() {
                             
                             <div className="mt-3 bg-slate-900/50 rounded p-3 border border-white/5">
                               <p className="text-xs text-teal-400 font-bold uppercase mb-1">Suggestion</p>
-                              <p className="text-sm text-slate-300 italic">"{item.suggestion}"</p>
+                              <p className="text-sm text-slate-300 italic">&ldquo;{item.suggestion}&rdquo;</p>
                             </div>
                           </div>
                         </div>
@@ -272,7 +287,7 @@ export default function AuditResult() {
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-3">
-                    {result.metRequirements.map((req, index) => (
+                    {result.metRequirements.map((req: string, index: number) => (
                       <li key={index} className="flex items-start">
                         <CheckCircle className="w-5 h-5 text-teal-500 mr-3 flex-shrink-0 mt-0.5" />
                         <span className="text-slate-300 text-sm">{req}</span>

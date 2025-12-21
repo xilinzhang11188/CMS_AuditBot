@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { Navbar } from '@/components/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,17 @@ import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { compareAudits, Audit } from '@/lib/api';
 
-export default function ComparePage() {
+interface AuditData {
+  id: string;
+  date: string;
+  codeId: string;
+  riskLevel: 'Low' | 'Medium' | 'High';
+  riskScore: number;
+  clinicalConditions: string[];
+  missingRequirements: (string | { requirement: string; explanation?: string; suggestion?: string })[];
+}
+
+function ComparePageContent() {
   const searchParams = useSearchParams();
   const [audits, setAudits] = useState<Audit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,7 +139,7 @@ export default function ComparePage() {
                 <div>
                   <h4 className="text-sm font-medium text-slate-400 uppercase mb-2">Conditions</h4>
                   <div className="flex flex-wrap gap-2">
-                    {audit.clinicalConditions.map((c, i) => (
+                    {audit.clinicalConditions.map((c: string, i: number) => (
                       <span key={i} className="px-2 py-1 rounded bg-slate-800 text-xs text-slate-300 border border-white/5">
                         {c}
                       </span>
@@ -141,7 +151,7 @@ export default function ComparePage() {
                   <h4 className="text-sm font-medium text-slate-400 uppercase mb-2">Missing Requirements</h4>
                   {audit.missingRequirements && audit.missingRequirements.length > 0 ? (
                     <ul className="space-y-2">
-                      {audit.missingRequirements.map((req, i) => (
+                      {audit.missingRequirements.map((req: string | { requirement: string; explanation?: string; suggestion?: string }, i: number) => (
                         <li key={i} className="flex items-start text-sm text-red-300 bg-red-500/5 p-2 rounded border border-red-500/10">
                           <AlertTriangle className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
                           <span>{req.requirement}</span>
@@ -166,5 +176,23 @@ export default function ComparePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex items-center justify-center">
+      <div className="text-center">
+        <h2 className="text-xl font-bold mb-4">Loading comparison...</h2>
+      </div>
+    </div>
+  );
+}
+
+export default function ComparePage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <ComparePageContent />
+    </Suspense>
   );
 }
