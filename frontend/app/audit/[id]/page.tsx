@@ -4,62 +4,79 @@ import React, { useEffect, useState } from 'react';
 import { Navbar } from '@/components/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, CheckCircle, Download, ArrowLeft, FileText, AlertOctagon, Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Download, ArrowLeft, FileText, AlertOctagon, Info, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { CCM_CODES } from '@/lib/data';
+import { fetchAuditById, Audit } from '@/lib/api';
 
 export default function AuditResult() {
   const params = useParams();
   const router = useRouter();
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<Audit | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real app, we would fetch by ID. 
-    // For this demo, we'll try to get the 'currentAudit' from localStorage
-    // or find it in history if the ID matches.
-    const current = localStorage.getItem('currentAudit');
-    const history = JSON.parse(localStorage.getItem('auditHistory') || '[]');
-    
-    let foundResult = null;
-    
-    if (current) {
-      const parsed = JSON.parse(current);
-      if (parsed.id === params.id) {
-        foundResult = parsed;
+    async function loadAudit() {
+      try {
+        setLoading(true);
+        setError(null);
+        const audit = await fetchAuditById(params.id as string);
+        setResult(audit);
+      } catch (err) {
+        console.error('Failed to fetch audit:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load audit');
+      } finally {
+        setLoading(false);
       }
     }
-    
-    if (!foundResult) {
-      foundResult = history.find(r => r.id === params.id);
-    }
 
-    if (foundResult) {
-      setResult(foundResult);
-    } else {
-      // Fallback for demo if refreshed and lost state (since we don't have a real backend)
-      // Redirect to history or show error
-      // For now, let's just redirect to dashboard
-      router.push('/');
+    if (params.id) {
+      loadAudit();
     }
-    setLoading(false);
-  }, [params.id, router]);
+  }, [params.id]);
 
-  if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <p className="text-slate-400">Loading audit...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
+        <div className="text-center space-y-4">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto" />
+          <h2 className="text-xl font-bold">Failed to Load Audit</h2>
+          <p className="text-slate-400">{error}</p>
+          <Link href="/history">
+            <Button>Back to History</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (!result) return null;
 
-  const codeDetails = CCM_CODES.find(c => c.id === result.codeId);
-
-  const getRiskColor = (level) => {
-    switch(level) {
-      case 'High': return 'text-red-400 bg-red-500/10 border-red-500/20';
-      case 'Medium': return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
-      case 'Low': return 'text-teal-400 bg-teal-500/10 border-teal-500/20';
+  const getRiskColor = (level: string) => {
+    switch(level.toLowerCase()) {
+      case 'high': return 'text-red-400 bg-red-500/10 border-red-500/20';
+      case 'medium': return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+      case 'low': return 'text-teal-400 bg-teal-500/10 border-teal-500/20';
       default: return 'text-slate-400 bg-slate-500/10 border-slate-500/20';
     }
+  };
+
+  const getRiskLevelDisplay = (level: string) => {
+    return level.charAt(0).toUpperCase() + level.slice(1);
   };
 
   return (
@@ -91,9 +108,9 @@ export default function AuditResult() {
               animate={{ opacity: 1, y: 0 }}
             >
               <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-white/10 overflow-hidden relative">
-                <div className={cn("absolute top-0 left-0 w-full h-2", 
-                  result.riskLevel === 'High' ? 'bg-red-500' : 
-                  result.riskLevel === 'Medium' ? 'bg-amber-500' : 'bg-teal-500'
+                <div className={cn("absolute top-0 left-0 w-full h-2",
+                  result.riskLevel === 'high' ? 'bg-red-500' :
+                  result.riskLevel === 'medium' ? 'bg-amber-500' : 'bg-teal-500'
                 )} />
                 <CardContent className="p-8 text-center">
                   <h2 className="text-lg font-medium text-slate-400 mb-6">Audit Risk Assessment</h2>
@@ -119,15 +136,15 @@ export default function AuditResult() {
                         strokeDasharray={2 * Math.PI * 88}
                         strokeDashoffset={2 * Math.PI * 88 * (1 - result.riskScore / 100)}
                         className={cn(
-                          result.riskLevel === 'High' ? 'text-red-500' : 
-                          result.riskLevel === 'Medium' ? 'text-amber-500' : 'text-teal-500'
+                          result.riskLevel === 'high' ? 'text-red-500' :
+                          result.riskLevel === 'medium' ? 'text-amber-500' : 'text-teal-500'
                         )}
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-5xl font-bold text-white">{result.riskScore}%</span>
+                      <span className="text-5xl font-bold text-white">{result.riskScore}</span>
                       <span className={cn("text-sm font-bold uppercase mt-1 px-2 py-0.5 rounded-full", getRiskColor(result.riskLevel))}>
-                        {result.riskLevel} Risk
+                        {getRiskLevelDisplay(result.riskLevel)} Risk
                       </span>
                     </div>
                   </div>
@@ -139,7 +156,7 @@ export default function AuditResult() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-400 uppercase">Date</p>
-                      <p className="font-bold text-white text-lg">{new Date(result.date).toLocaleDateString()}</p>
+                      <p className="font-bold text-white text-lg">{new Date(result.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
                 </CardContent>

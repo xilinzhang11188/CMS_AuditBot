@@ -6,37 +6,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Search, Filter, AlertTriangle, CheckCircle, Eye, Calendar } from 'lucide-react';
+import { ArrowLeft, Search, Filter, AlertTriangle, CheckCircle, Eye, Calendar, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
-
-// Mock data - all audits from all providers
-const mockAllAudits = [
-  // Dr. Sarah Chen's audits
-  { id: 'a1', providerId: '1', providerName: 'Dr. Sarah Chen', date: '2024-01-15', code: '99490', riskLevel: 'Low', riskScore: 95, conditions: 'Diabetes, Hypertension' },
-  { id: 'a2', providerId: '1', providerName: 'Dr. Sarah Chen', date: '2024-01-14', code: '99439', riskLevel: 'High', riskScore: 65, conditions: 'CHF, COPD' },
-  { id: 'a3', providerId: '1', providerName: 'Dr. Sarah Chen', date: '2024-01-13', code: '99491', riskLevel: 'Medium', riskScore: 78, conditions: 'Diabetes' },
-  
-  // Dr. James Wilson's audits
-  { id: 'b1', providerId: '2', providerName: 'Dr. James Wilson', date: '2024-01-16', code: '99490', riskLevel: 'Low', riskScore: 94, conditions: 'Diabetes' },
-  { id: 'b2', providerId: '2', providerName: 'Dr. James Wilson', date: '2024-01-15', code: '99491', riskLevel: 'Low', riskScore: 90, conditions: 'Hypertension, Diabetes' },
-  { id: 'b3', providerId: '2', providerName: 'Dr. James Wilson', date: '2024-01-14', code: '99490', riskLevel: 'Low', riskScore: 93, conditions: 'COPD' },
-  
-  // Dr. Emily Rodriguez's audits
-  { id: 'c1', providerId: '3', providerName: 'Dr. Emily Rodriguez', date: '2024-01-14', code: '99490', riskLevel: 'High', riskScore: 62, conditions: 'Diabetes' },
-  { id: 'c2', providerId: '3', providerName: 'Dr. Emily Rodriguez', date: '2024-01-13', code: '99439', riskLevel: 'High', riskScore: 68, conditions: 'CHF' },
-  { id: 'c3', providerId: '3', providerName: 'Dr. Emily Rodriguez', date: '2024-01-12', code: '99491', riskLevel: 'Medium', riskScore: 75, conditions: 'Hypertension' },
-  
-  // Dr. Michael Chang's audits
-  { id: 'd1', providerId: '4', providerName: 'Dr. Michael Chang', date: '2024-01-16', code: '99490', riskLevel: 'Low', riskScore: 91, conditions: 'Multiple Chronic Conditions' },
-  { id: 'd2', providerId: '4', providerName: 'Dr. Michael Chang', date: '2024-01-15', code: '99487', riskLevel: 'Medium', riskScore: 82, conditions: 'Complex Care Management' },
-  { id: 'd3', providerId: '4', providerName: 'Dr. Michael Chang', date: '2024-01-14', code: '99491', riskLevel: 'High', riskScore: 70, conditions: 'Dementia, Diabetes' },
-];
+import { fetchManagementAudits, fetchProviders, AuditWithProvider, ProviderStats } from '@/lib/api';
 
 export default function AllAuditsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [audits, setAudits] = useState<AuditWithProvider[]>([]);
+  const [providers, setProviders] = useState<ProviderStats[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalAudits, setTotalAudits] = useState(0);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProvider, setFilterProvider] = useState('all');
   const [filterRisk, setFilterRisk] = useState('all');
@@ -64,34 +48,59 @@ export default function AllAuditsPage() {
     return 'All Audits';
   };
 
+  // Load providers for filter dropdown
+  useEffect(() => {
+    async function loadProviders() {
+      try {
+        const data = await fetchProviders();
+        setProviders(data);
+      } catch (err: any) {
+        console.error('Failed to fetch providers:', err);
+      }
+    }
+    loadProviders();
+  }, []);
+
+  // Load audits when filters change
+  useEffect(() => {
+    async function loadAudits() {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const params: any = {
+          page: currentPage,
+          limit: itemsPerPage
+        };
+        
+        if (filterProvider !== 'all') params.providerId = filterProvider;
+        if (filterRisk !== 'all') params.riskLevel = filterRisk;
+        if (startDate) params.startDate = new Date(startDate).toISOString();
+        if (endDate) params.endDate = new Date(endDate).toISOString();
+        
+        const data = await fetchManagementAudits(params);
+        setAudits(data.audits);
+        setTotalAudits(data.total);
+      } catch (err: any) {
+        console.error('Failed to fetch audits:', err);
+        setError(err.message || 'Failed to load audits');
+        
+        // If access denied, redirect to dashboard
+        if (err.message.includes('Access denied') || err.message.includes('Manager role required')) {
+          router.push('/dashboard');
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadAudits();
+  }, [filterProvider, filterRisk, startDate, endDate, currentPage, router]);
+
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterProvider, filterRisk, startDate, endDate]);
-
-  // Get unique providers
-  const providers = Array.from(new Set(mockAllAudits.map(a => a.providerName)));
-
-  // Filter audits
-  const filteredAudits = mockAllAudits.filter(audit => {
-    const matchesSearch =
-      audit.providerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      audit.code.includes(searchTerm) ||
-      audit.conditions.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesProvider = filterProvider === 'all' || audit.providerName === filterProvider;
-    const matchesRisk = filterRisk === 'all' || audit.riskLevel === filterRisk;
-    
-    // Filter by month if month parameter is present
-    const matchesMonth = !monthParam || audit.date.startsWith(monthParam);
-    
-    // Filter by date range if dates are provided
-    const auditDate = new Date(audit.date);
-    const matchesStartDate = !startDate || auditDate >= new Date(startDate);
-    const matchesEndDate = !endDate || auditDate <= new Date(endDate);
-    
-    return matchesSearch && matchesProvider && matchesRisk && matchesMonth && matchesStartDate && matchesEndDate;
-  });
+  }, [filterProvider, filterRisk, startDate, endDate]);
 
   const getRiskBadge = (level: string) => {
     switch (level) {
@@ -155,7 +164,7 @@ export default function AllAuditsPage() {
                 >
                   <option value="all">All Providers</option>
                   {providers.map(provider => (
-                    <option key={provider} value={provider}>{provider}</option>
+                    <option key={provider.id} value={provider.id}>{provider.name}</option>
                   ))}
                 </select>
 
@@ -222,7 +231,11 @@ export default function AllAuditsPage() {
         {/* Pagination Info */}
         <div className="mb-4 flex items-center justify-between">
           <div className="text-sm text-slate-400">
-            Showing {filteredAudits.length > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredAudits.length)} of {filteredAudits.length} audits
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
+            ) : (
+              <>Showing {totalAudits > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0} to {Math.min(currentPage * itemsPerPage, totalAudits)} of {totalAudits} audits</>
+            )}
           </div>
         </div>
 
@@ -243,36 +256,46 @@ export default function AllAuditsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {filteredAudits.length > 0 ? (
-                    filteredAudits
-                      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                      .map((audit) => (
-                      <tr key={audit.id} className="hover:bg-white/5 transition-colors">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-teal-400 mx-auto" />
+                      </td>
+                    </tr>
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-red-400">
+                        {error}
+                      </td>
+                    </tr>
+                  ) : audits.length > 0 ? (
+                    audits.map((audit) => (
+                      <tr key={audit.audit.id} className="hover:bg-white/5 transition-colors">
                         <td className="px-6 py-4 text-slate-300">
-                          {new Date(audit.date).toLocaleDateString()}
+                          {new Date(audit.audit.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4">
-                          <Link 
-                            href={`/management/provider/${audit.providerId}`}
+                          <Link
+                            href={`/management/provider/${audit.audit.userId}`}
                             className="text-teal-400 hover:text-teal-300 font-medium"
                           >
                             {audit.providerName}
                           </Link>
                         </td>
                         <td className="px-6 py-4 font-medium text-white">
-                          {audit.code}
+                          {audit.audit.codeId}
                         </td>
                         <td className="px-6 py-4 text-slate-300">
-                          {audit.conditions}
+                          {audit.audit.clinicalConditions.join(', ') || 'N/A'}
                         </td>
                         <td className="px-6 py-4">
-                          {getRiskBadge(audit.riskLevel)}
+                          {getRiskBadge(audit.audit.riskLevel.charAt(0).toUpperCase() + audit.audit.riskLevel.slice(1))}
                         </td>
                         <td className="px-6 py-4 font-bold text-white">
-                          {audit.riskScore}%
+                          {audit.audit.riskScore}%
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <Link href={`/audit/${audit.id}`}>
+                          <Link href={`/audit/${audit.audit.id}`}>
                             <Button variant="ghost" size="icon" className="h-8 w-8">
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -294,7 +317,7 @@ export default function AllAuditsPage() {
         </Card>
 
         {/* Pagination Controls */}
-        {filteredAudits.length > itemsPerPage && (
+        {!loading && totalAudits > itemsPerPage && (
           <div className="mt-6 flex items-center justify-center space-x-2">
             <Button
               variant="outline"
@@ -316,10 +339,10 @@ export default function AllAuditsPage() {
             </Button>
             
             <div className="flex items-center space-x-2">
-              {Array.from({ length: Math.ceil(filteredAudits.length / itemsPerPage) }, (_, i) => i + 1)
+              {Array.from({ length: Math.ceil(totalAudits / itemsPerPage) }, (_, i) => i + 1)
                 .filter(page => {
                   // Show first page, last page, current page, and pages around current
-                  const totalPages = Math.ceil(filteredAudits.length / itemsPerPage);
+                  const totalPages = Math.ceil(totalAudits / itemsPerPage);
                   return page === 1 ||
                          page === totalPages ||
                          (page >= currentPage - 1 && page <= currentPage + 1);
@@ -349,8 +372,8 @@ export default function AllAuditsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredAudits.length / itemsPerPage), prev + 1))}
-              disabled={currentPage === Math.ceil(filteredAudits.length / itemsPerPage)}
+              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalAudits / itemsPerPage), prev + 1))}
+              disabled={currentPage === Math.ceil(totalAudits / itemsPerPage)}
               className="bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-50"
             >
               Next →
@@ -358,8 +381,8 @@ export default function AllAuditsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage(Math.ceil(filteredAudits.length / itemsPerPage))}
-              disabled={currentPage === Math.ceil(filteredAudits.length / itemsPerPage)}
+              onClick={() => setCurrentPage(Math.ceil(totalAudits / itemsPerPage))}
+              disabled={currentPage === Math.ceil(totalAudits / itemsPerPage)}
               className="bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-50"
             >
               Last

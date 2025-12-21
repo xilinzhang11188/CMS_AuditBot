@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { FileUpload } from '@/components/file-upload';
-import { CCM_CODES, analyzeNote } from '@/lib/data';
+import { CCM_CODES } from '@/lib/data';
+import { fetchCCMCodes, CCMCode, uploadClinicalNote, ClinicalNoteUploadResponse, analyzeAudit } from '@/lib/api';
 import { Check, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -14,43 +15,93 @@ import { useRouter } from 'next/navigation';
 export default function NewAudit() {
   const router = useRouter();
   const [step, setStep] = useState(1);
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState<File | null>(null);
   const [pastedText, setPastedText] = useState('');
+  const [extractedText, setExtractedText] = useState('');
+  const [noteId, setNoteId] = useState<string | null>(null);
   const [inputMethod, setInputMethod] = useState<'upload' | 'paste'>('upload');
-  const [selectedCode, setSelectedCode] = useState(null);
+  const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [ccmCodes, setCcmCodes] = useState<CCMCode[]>(CCM_CODES);
+  const [isLoadingCodes, setIsLoadingCodes] = useState(true);
+  const [codesError, setCodesError] = useState<string | null>(null);
 
-  const handleFileSelect = (uploadedFile) => {
+  // Fetch CCM codes from backend on component mount
+  useEffect(() => {
+    async function loadCCMCodes() {
+      try {
+        setIsLoadingCodes(true);
+        setCodesError(null);
+        const codes = await fetchCCMCodes();
+        setCcmCodes(codes);
+      } catch (error) {
+        console.error('Failed to fetch CCM codes:', error);
+        setCodesError(error instanceof Error ? error.message : 'Failed to load CCM codes');
+        // Fall back to static codes from data.js
+        setCcmCodes(CCM_CODES);
+      } finally {
+        setIsLoadingCodes(false);
+      }
+    }
+
+    loadCCMCodes();
+  }, []);
+
+  const handleFileSelect = async (uploadedFile: File | null) => {
     setFile(uploadedFile);
     setPastedText(''); // Clear pasted text when file is selected
+    setExtractedText(''); // Clear extracted text
+    setUploadError(null);
+    
+    // Automatically upload file to backend for text extraction
+    if (uploadedFile) {
+      setIsUploading(true);
+      try {
+        const response: ClinicalNoteUploadResponse = await uploadClinicalNote(uploadedFile);
+        setExtractedText(response.extractedText);
+        setNoteId(response.noteId);
+      } catch (error) {
+        console.error('Failed to upload file:', error);
+        setUploadError(error instanceof Error ? error.message : 'Failed to upload file');
+        setFile(null); // Clear file on error
+      } finally {
+        setIsUploading(false);
+      }
+    }
   };
 
   const handleTextPaste = (text: string) => {
     setPastedText(text);
     setFile(null); // Clear file when text is pasted
+    setExtractedText(''); // Clear extracted text
+    setNoteId(null); // Clear note ID
+    setUploadError(null);
   };
 
   const handleAnalyze = async () => {
-    if ((!file && !pastedText) || !selectedCode) return;
+    if ((!extractedText && !pastedText) || !selectedCode) return;
     
     setIsAnalyzing(true);
+    setUploadError(null);
+    
     try {
-      // Use pasted text if available, otherwise simulate file text
-      const text = pastedText || "Simulated extracted text from file...";
-      const result = await analyzeNote(text, selectedCode);
+      // Use pasted text if available, otherwise use extracted text from file
+      const text = pastedText || extractedText;
       
-      // Store result in localStorage for the results page to pick up
-      // In a real app, this would be an ID and we'd fetch from backend
-      localStorage.setItem('currentAudit', JSON.stringify(result));
+      // Call backend API to analyze the audit
+      const response = await analyzeAudit({
+        noteText: text,
+        codeId: selectedCode,
+        noteId: noteId || undefined
+      });
       
-      // Also add to history
-      const history = JSON.parse(localStorage.getItem('auditHistory') || '[]');
-      history.unshift(result);
-      localStorage.setItem('auditHistory', JSON.stringify(history));
-
-      router.push(`/audit/${result.id}`);
+      // Navigate to the audit detail page with the audit ID
+      router.push(`/audit/${response.audit.id}`);
     } catch (error) {
       console.error("Analysis failed", error);
+      setUploadError(error instanceof Error ? error.message : 'Failed to analyze audit');
       setIsAnalyzing(false);
     }
   };
@@ -129,11 +180,62 @@ export default function NewAudit() {
 
                 {/* File Upload */}
                 {inputMethod === 'upload' && (
-                  <FileUpload
-                    selectedFile={file}
-                    onFileSelect={handleFileSelect}
-                    onClear={() => setFile(null)}
-                  />
+                  <div className="space-y-4">
+                    <FileUpload
+                      selectedFile={file}
+                      onFileSelect={handleFileSelect}
+                      onClear={() => {
+                        setFile(null);
+                        setExtractedText('');
+                        setNoteId(null);
+                        setUploadError(null);
+                      }}
+                    />
+                    
+                    {/* Upload Status */}
+                    {isUploading && (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="w-5 h-5 animate-spin text-teal-500" />
+                        <span className="ml-3 text-slate-400">Extracting text from file...</span>
+                      </div>
+                    )}
+                    
+                    {/* Upload Error */}
+                    {uploadError && (
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                        <div className="flex items-start space-x-3">
+                          <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                          <div>
+                            <p className="text-red-500 font-medium">Upload Failed</p>
+                            <p className="text-sm text-slate-400 mt-1">{uploadError}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Extracted Text Preview */}
+                    {extractedText && !uploadError && (
+                      <Card className="bg-slate-900 border-slate-800">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-slate-300">
+                              Extracted Text Preview
+                            </label>
+                            <span className="text-xs text-teal-500">✓ Ready</span>
+                          </div>
+                          <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 max-h-48 overflow-y-auto">
+                            <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                              {extractedText.substring(0, 500)}
+                              {extractedText.length > 500 && '...'}
+                            </p>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-2">
+                            {extractedText.length} characters extracted
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
                 )}
 
                 {/* Text Paste Area */}
@@ -171,11 +273,20 @@ export default function NewAudit() {
                 <div className="mt-8 flex justify-end">
                   <Button
                     onClick={() => setStep(2)}
-                    disabled={!file && !pastedText}
+                    disabled={(!extractedText && !pastedText) || isUploading}
                     size="lg"
                     className="w-full sm:w-auto"
                   >
-                    Continue <ChevronRight className="w-4 h-4 ml-2" />
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        Continue <ChevronRight className="w-4 h-4 ml-2" />
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -195,8 +306,25 @@ export default function NewAudit() {
                 <p className="text-slate-400">Choose the billing code you intend to use for this documentation.</p>
               </div>
 
+              {isLoadingCodes ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+                  <span className="ml-3 text-slate-400">Loading CCM codes...</span>
+                </div>
+              ) : codesError ? (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-6">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5" />
+                    <div>
+                      <p className="text-yellow-500 font-medium">Using cached CCM codes</p>
+                      <p className="text-sm text-slate-400 mt-1">{codesError}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {CCM_CODES.map((code) => (
+                {ccmCodes.map((code) => (
                   <div
                     key={code.id}
                     onClick={() => setSelectedCode(code.id)}

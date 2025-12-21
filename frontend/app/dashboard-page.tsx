@@ -4,42 +4,53 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, FileText, AlertTriangle, CheckCircle, TrendingUp, Plus } from 'lucide-react';
+import { ArrowRight, FileText, AlertTriangle, CheckCircle, TrendingUp, Plus, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { MOCK_AUDIT_HISTORY } from '@/lib/data';
+import { fetchAudits, fetchOrganizationQuota, Audit } from '@/lib/api';
 
 import { useAuth } from '@/lib/auth-context';
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [auditHistory, setAuditHistory] = useState(MOCK_AUDIT_HISTORY);
+  const [auditHistory, setAuditHistory] = useState<Audit[]>([]);
+  const [quotaUsed, setQuotaUsed] = useState(0);
+  const [quotaLimit, setQuotaLimit] = useState(100);
+  const [loading, setLoading] = useState(true);
 
-  // Load audit history from localStorage on mount
+  // Load audit history and quota from backend
   useEffect(() => {
-    const storedHistory = localStorage.getItem('auditHistory');
-    if (storedHistory) {
+    async function loadDashboardData() {
       try {
-        const parsed = JSON.parse(storedHistory);
-        setAuditHistory(parsed);
+        setLoading(true);
+        
+        // Fetch audits and quota in parallel
+        const [audits, quota] = await Promise.all([
+          fetchAudits(10, 0),
+          fetchOrganizationQuota()
+        ]);
+        
+        setAuditHistory(audits);
+        setQuotaUsed(quota.quotaUsed);
+        setQuotaLimit(quota.quotaLimit);
       } catch (error) {
-        console.error('Failed to parse audit history:', error);
-        // Fallback to mock data if parsing fails
-        setAuditHistory(MOCK_AUDIT_HISTORY);
-        localStorage.setItem('auditHistory', JSON.stringify(MOCK_AUDIT_HISTORY));
+        console.error('Failed to load dashboard data:', error);
+      } finally {
+        setLoading(false);
       }
-    } else {
-      // Initialize with mock data if no history exists
-      setAuditHistory(MOCK_AUDIT_HISTORY);
-      localStorage.setItem('auditHistory', JSON.stringify(MOCK_AUDIT_HISTORY));
     }
-  }, []);
+
+    if (user) {
+      loadDashboardData();
+    }
+  }, [user]);
 
   // Calculate stats
   const totalAudits = auditHistory.length;
-  const highRisk = auditHistory.filter(a => a.riskLevel === 'High').length;
+  const highRisk = auditHistory.filter(a => a.riskLevel === 'high').length;
   const avgScore = totalAudits > 0 ? Math.round(auditHistory.reduce((acc, curr) => acc + curr.riskScore, 0) / totalAudits) : 0;
+  const quotaRemaining = quotaLimit - quotaUsed;
   
   // Get recent audits (top 3)
   const recentAudits = auditHistory.slice(0, 3);
@@ -60,8 +71,17 @@ export default function Dashboard() {
               Welcome back, {user?.name || 'Doctor'}
             </h1>
             <p className="text-lg text-slate-400 max-w-2xl">
-              Your audit compliance score is <span className="text-teal-400 font-semibold">92%</span> this month. 
-              You have <span className="text-white font-semibold">15</span> audits remaining in your free tier.
+              {loading ? (
+                <span className="inline-flex items-center">
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Loading dashboard...
+                </span>
+              ) : (
+                <>
+                  Your average audit score is <span className="text-teal-400 font-semibold">{avgScore}%</span> this month.
+                  You have <span className="text-white font-semibold">{quotaRemaining}</span> audits remaining ({quotaUsed}/{quotaLimit} used).
+                </>
+              )}
             </p>
           </motion.div>
         </div>
@@ -170,29 +190,29 @@ export default function Dashboard() {
                         <div className="flex items-center space-x-4">
                           <div className={cn(
                             "w-10 h-10 rounded-full flex items-center justify-center",
-                            audit.riskLevel === 'Low' ? "bg-teal-500/10 text-teal-400" :
-                            audit.riskLevel === 'Medium' ? "bg-amber-500/10 text-amber-400" :
+                            audit.riskLevel === 'low' ? "bg-teal-500/10 text-teal-400" :
+                            audit.riskLevel === 'medium' ? "bg-amber-500/10 text-amber-400" :
                             "bg-red-500/10 text-red-400"
                           )}>
-                            {audit.riskLevel === 'Low' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                            {audit.riskLevel === 'low' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
                           </div>
                           <div>
                             <h4 className="font-medium text-white">CCM Code {audit.codeId}</h4>
                             <p className="text-sm text-slate-400">
-                              {new Date(audit.date).toLocaleDateString()} • {audit.clinicalConditions.join(', ')}
+                              {new Date(audit.createdAt).toLocaleDateString()} • {audit.clinicalConditions.slice(0, 2).join(', ')}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
                           <span className={cn(
-                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                            audit.riskLevel === 'Low' ? "bg-teal-500/10 text-teal-400" :
-                            audit.riskLevel === 'Medium' ? "bg-amber-500/10 text-amber-400" :
+                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize",
+                            audit.riskLevel === 'low' ? "bg-teal-500/10 text-teal-400" :
+                            audit.riskLevel === 'medium' ? "bg-amber-500/10 text-amber-400" :
                             "bg-red-500/10 text-red-400"
                           )}>
                             {audit.riskLevel} Risk
                           </span>
-                          <p className="text-sm font-bold text-white mt-1">{audit.riskScore}% Score</p>
+                          <p className="text-sm font-bold text-white mt-1">{audit.riskScore} Score</p>
                         </div>
                       </CardContent>
                     </Card>

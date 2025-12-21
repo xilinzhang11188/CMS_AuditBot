@@ -4,30 +4,71 @@ import React, { useEffect, useState } from 'react';
 import { Navbar } from '@/components/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, AlertTriangle, CheckCircle, Minus } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { MOCK_AUDIT_HISTORY } from '@/lib/data';
+import { compareAudits, Audit } from '@/lib/api';
 
 export default function ComparePage() {
   const searchParams = useSearchParams();
-  const [audits, setAudits] = useState([]);
+  const [audits, setAudits] = useState<Audit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const ids = searchParams.getAll('ids');
-    const stored = localStorage.getItem('auditHistory');
-    const allHistory = stored ? JSON.parse(stored) : MOCK_AUDIT_HISTORY;
-    
-    const selectedAudits = allHistory.filter(a => ids.includes(a.id));
-    setAudits(selectedAudits);
+    const fetchComparisonData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const ids = searchParams.getAll('ids');
+        
+        if (ids.length === 0) {
+          setError('No audits selected for comparison');
+          setLoading(false);
+          return;
+        }
+        
+        if (ids.length > 3) {
+          setError('Maximum 3 audits can be compared at once');
+          setLoading(false);
+          return;
+        }
+        
+        const comparedAudits = await compareAudits(ids);
+        setAudits(comparedAudits);
+      } catch (err) {
+        console.error('Failed to fetch comparison data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load comparison data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchComparisonData();
   }, [searchParams]);
 
-  if (audits.length === 0) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-bold mb-4">No audits selected</h2>
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-teal-400" />
+          <p className="text-slate-400">Loading comparison...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || audits.length === 0) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2">{error || 'No audits found'}</h2>
+          <p className="text-slate-400 mb-4">
+            {error || 'The selected audits could not be loaded'}
+          </p>
           <Link href="/history">
             <Button>Back to History</Button>
           </Link>
@@ -58,13 +99,13 @@ export default function ComparePage() {
               <CardHeader className="border-b border-white/5 pb-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-sm text-slate-400 mb-1">{new Date(audit.date).toLocaleDateString()}</p>
+                    <p className="text-sm text-slate-400 mb-1">{new Date(audit.createdAt).toLocaleDateString()}</p>
                     <CardTitle className="text-xl">Code {audit.codeId}</CardTitle>
                   </div>
                   <div className={cn(
                     "w-12 h-12 rounded-full flex items-center justify-center border-4",
-                    audit.riskLevel === 'High' ? "border-red-500/20 text-red-500" :
-                    audit.riskLevel === 'Medium' ? "border-amber-500/20 text-amber-500" :
+                    audit.riskLevel === 'high' ? "border-red-500/20 text-red-500" :
+                    audit.riskLevel === 'medium' ? "border-amber-500/20 text-amber-500" :
                     "border-teal-500/20 text-teal-500"
                   )}>
                     <span className="font-bold text-sm">{audit.riskScore}%</span>
@@ -75,12 +116,12 @@ export default function ComparePage() {
                 <div>
                   <h4 className="text-sm font-medium text-slate-400 uppercase mb-2">Risk Level</h4>
                   <span className={cn(
-                    "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium",
-                    audit.riskLevel === 'Low' ? "bg-teal-500/10 text-teal-400" :
-                    audit.riskLevel === 'Medium' ? "bg-amber-500/10 text-amber-400" :
+                    "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize",
+                    audit.riskLevel === 'low' ? "bg-teal-500/10 text-teal-400" :
+                    audit.riskLevel === 'medium' ? "bg-amber-500/10 text-amber-400" :
                     "bg-red-500/10 text-red-400"
                   )}>
-                    {audit.riskLevel === 'Low' ? <CheckCircle className="w-4 h-4 mr-2" /> : <AlertTriangle className="w-4 h-4 mr-2" />}
+                    {audit.riskLevel === 'low' ? <CheckCircle className="w-4 h-4 mr-2" /> : <AlertTriangle className="w-4 h-4 mr-2" />}
                     {audit.riskLevel} Risk
                   </span>
                 </div>
@@ -103,7 +144,7 @@ export default function ComparePage() {
                       {audit.missingRequirements.map((req, i) => (
                         <li key={i} className="flex items-start text-sm text-red-300 bg-red-500/5 p-2 rounded border border-red-500/10">
                           <AlertTriangle className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
-                          <span>{typeof req === 'string' ? req : req.requirement}</span>
+                          <span>{req.requirement}</span>
                         </li>
                       ))}
                     </ul>

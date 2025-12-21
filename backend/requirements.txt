@@ -1,0 +1,27 @@
+# FastAPI and ASGI server
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# MongoDB async driver
+motor==3.6.0
+
+# Data validation and settings
+pydantic==2.10.3
+pydantic-settings==2.6.1
+
+# File upload support
+python-multipart==0.0.18
+
+# Environment variables
+python-dotenv==1.0.1
+
+# Authentication
+argon2-cffi==23.1.0
+python-jose[cryptography]==3.3.0
+
+# Text extraction from documents
+python-docx==1.1.2
+PyPDF2==3.0.1
+
+# OpenAI API
+openai==1.54.0
