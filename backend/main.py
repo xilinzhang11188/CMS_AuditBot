@@ -5,15 +5,28 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import os
+from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.database import mongodb
 from app.routers import auth_router, ccm_codes_router, clinical_notes_router, audits_router, organizations_router, management_router, users_router
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifespan events."""
+    # Startup
+    await mongodb.connect()
+    yield
+    # Shutdown
+    await mongodb.disconnect()
+
+
 app = FastAPI(
     title="Auditbot API",
     description="Backend API for Auditbot healthcare audit management system",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -33,18 +46,6 @@ app.include_router(audits_router)
 app.include_router(organizations_router)
 app.include_router(management_router)
 app.include_router(users_router)
-
-
-@app.on_event("startup")
-async def startup_db_client():
-    """Initialize database connection on startup."""
-    await mongodb.connect()
-
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    """Close database connection on shutdown."""
-    await mongodb.disconnect()
 
 
 @app.get("/")

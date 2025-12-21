@@ -7,23 +7,35 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { ShieldCheck, Loader2, Mail, Lock, User, Building, Users } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 
 export default function RegisterPage() {
   const { register } = useAuth();
+  const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [organization, setOrganization] = useState('');
   const [role, setRole] = useState<'provider' | 'manager'>('provider');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
+    
     try {
-      await register(name, email, password, organization, role);
+      const success = await register(name, email, password, organization, role);
+      if (success) {
+        // Redirect to dashboard on successful registration
+        router.push('/');
+      } else {
+        setError('Registration failed. Please try again.');
+      }
     } catch (error) {
-      console.error(error);
+      console.error('Registration error:', error);
+      setError('Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -57,6 +69,11 @@ export default function RegisterPage() {
             <CardDescription>Enter your details to get started</CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-300">Full Name</label>

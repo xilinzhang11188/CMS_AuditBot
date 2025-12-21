@@ -15,9 +15,18 @@ class OpenAIService:
     
     def __init__(self):
         """Initialize the OpenAI service."""
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        self.api_key = settings.OPENAI_API_KEY
+        self.client = None
         self.model = "gpt-4"
         self.timeout = 30  # 30 seconds timeout
+    
+    def _get_client(self):
+        """Get or create OpenAI client."""
+        if self.client is None:
+            if self.api_key == "your-openai-api-key-here":
+                raise ValueError("OpenAI API key not configured. Please set OPENAI_API_KEY in .env file.")
+            self.client = OpenAI(api_key=self.api_key)
+        return self.client
     
     def analyze_note(
         self,
@@ -51,7 +60,8 @@ class OpenAIService:
             
             # Call OpenAI API
             logger.info(f"Calling OpenAI API for CCM code {ccm_code} analysis")
-            response = self.client.chat.completions.create(
+            client = self._get_client()
+            response = client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {

@@ -46,7 +46,7 @@ class MongoDB:
     
     def get_collection(self, collection_name: str):
         """Get a collection from the database."""
-        if not self.db:
+        if self.db is None:
             raise Exception("Database not initialized")
         return self.db[collection_name]
 

@@ -1,84 +1,47 @@
-"use client";
+'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 
-// API base URL - update this based on your backend configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-// User type matching backend response
-export interface User {
-  id: string;
-  name: string;
+interface User {
+  _id: string;
   email: string;
-  organization?: string;
+  name: string;
   role: 'provider' | 'manager';
   organizationId: string;
-  createdAt: string;
-  lastLoginAt?: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, organization: string, role?: 'provider' | 'manager') => Promise<void>;
+  token: string | null;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, organizationName: string, role: 'provider' | 'manager') => Promise<boolean>;
   logout: () => void;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
-    // Check for stored token and fetch user on mount
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      fetchCurrentUser(token);
-    } else {
-      setIsLoading(false);
+    // Check for stored token on mount
+    const storedToken = localStorage.getItem('authToken');
+    const storedUser = localStorage.getItem('authUser');
+    
+    if (storedToken && storedUser) {
+      setToken(storedToken);
+      setUser(JSON.parse(storedUser));
     }
+    
+    setIsLoading(false);
   }, []);
 
-  const fetchCurrentUser = async (token: string) => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        const mappedUser: User = {
-          id: userData._id,
-          name: userData.name,
-          email: userData.email,
-          role: userData.role,
-          organizationId: userData.organizationId,
-          createdAt: userData.createdAt,
-          lastLoginAt: userData.lastLoginAt,
-        };
-        setUser(mappedUser);
-      } else {
-        // Token is invalid, clear it
-        localStorage.removeItem('authToken');
-      }
-    } catch (error) {
-      console.error('Failed to fetch current user:', error);
-      localStorage.removeItem('authToken');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+      const response = await fetch('http://localhost:8000/api/v1/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,40 +49,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Login failed');
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+        setToken(data.token);
+        
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('authUser', JSON.stringify(data.user));
+        
+        return true;
       }
-
-      const data = await response.json();
       
-      // Store token
-      localStorage.setItem('authToken', data.token);
-      
-      // Map user data
-      const mappedUser: User = {
-        id: data.user._id,
-        name: data.user.name,
-        email: data.user.email,
-        role: data.user.role,
-        organizationId: data.user.organizationId,
-        createdAt: data.user.createdAt,
-        lastLoginAt: data.user.lastLoginAt,
-      };
-      
-      setUser(mappedUser);
-      setIsLoading(false);
-      router.push('/');
+      return false;
     } catch (error) {
-      setIsLoading(false);
-      throw error;
+      console.error('Login error:', error);
+      return false;
     }
   };
 
-  const register = async (name: string, email: string, password: string, organization: string, role: 'provider' | 'manager' = 'provider') => {
-    setIsLoading(true);
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    organizationName: string,
+    role: 'provider' | 'manager'
+  ): Promise<boolean> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/signup`, {
+      const response = await fetch('http://localhost:8000/api/v1/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,64 +85,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email,
           password,
           role,
-          organizationName: organization,
+          organizationName,
         }),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Registration failed');
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+        setToken(data.token);
+        
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('authUser', JSON.stringify(data.user));
+        
+        return true;
       }
-
-      const data = await response.json();
       
-      // Store token
-      localStorage.setItem('authToken', data.token);
-      
-      // Map user data
-      const mappedUser: User = {
-        id: data.user._id,
-        name: data.user.name,
-        email: data.user.email,
-        role: data.user.role,
-        organizationId: data.user.organizationId,
-        createdAt: data.user.createdAt,
-        lastLoginAt: data.user.lastLoginAt,
-      };
-      
-      setUser(mappedUser);
-      setIsLoading(false);
-      router.push('/');
+      return false;
     } catch (error) {
-      setIsLoading(false);
-      throw error;
+      console.error('Register error:', error);
+      return false;
     }
   };
 
-  const logout = async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        // Call logout endpoint (optional, mainly for server-side cleanup if needed)
-        await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      // Clear local state regardless of API call result
-      setUser(null);
-      localStorage.removeItem('authToken');
-      router.push('/');
-    }
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
