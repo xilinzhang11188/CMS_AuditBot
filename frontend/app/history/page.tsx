@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Search, Filter, Trash2, Eye, CheckCircle, AlertTriangle, GitCompare, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, Trash2, Eye, CheckCircle, AlertTriangle, GitCompare, Loader2, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
@@ -18,6 +18,8 @@ export default function HistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [riskFilter, setRiskFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -30,6 +32,8 @@ export default function HistoryPage() {
       const result = await fetchAuditHistory({
         search: searchTerm,
         riskLevel: riskFilter,
+        startDate: startDate ? new Date(startDate).toISOString() : undefined,
+        endDate: endDate ? new Date(endDate).toISOString() : undefined,
         page,
         limit
       });
@@ -45,7 +49,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     loadAudits();
-  }, [page, searchTerm, riskFilter]);
+  }, [page, searchTerm, riskFilter, startDate, endDate]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this audit?')) {
@@ -92,6 +96,12 @@ export default function HistoryPage() {
     setPage(1); // Reset to first page on filter
   };
 
+  const handleClearDates = () => {
+    setStartDate('');
+    setEndDate('');
+    setPage(1);
+  };
+
   const totalPages = Math.ceil(total / limit);
 
   return (
@@ -124,30 +134,74 @@ export default function HistoryPage() {
 
         <Card className="border-white/10 bg-slate-900/50">
           <CardHeader className="border-b border-white/5 pb-4">
-            <div className="flex flex-col md:flex-row gap-4 justify-between">
-              <div className="relative w-full md:w-96">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-4 h-4" />
-                <input 
-                  type="text" 
-                  placeholder="Search by condition..." 
-                  className="w-full bg-slate-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50"
-                  value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
-                />
+            <div className="flex flex-col gap-4">
+              {/* First Row: Search and Risk Filter */}
+              <div className="flex flex-col md:flex-row gap-4 justify-between">
+                <div className="relative w-full md:w-96">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search by condition..."
+                    className="w-full bg-slate-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Select value={riskFilter || 'all'} onValueChange={handleRiskFilter}>
+                    <SelectTrigger className="w-[140px] bg-slate-800 border-white/10">
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Risk Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Risks</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Select value={riskFilter || 'all'} onValueChange={handleRiskFilter}>
-                  <SelectTrigger className="w-[140px] bg-slate-800 border-white/10">
-                    <Filter className="w-4 h-4 mr-2" />
-                    <SelectValue placeholder="Risk Level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Risks</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
+
+              {/* Second Row: Date Range */}
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                <div className="flex items-center gap-2 text-sm text-slate-400">
+                  <Calendar className="w-4 h-4" />
+                  <span>Date Range:</span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4 flex-1">
+                  <div className="flex-1">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                      placeholder="Start Date"
+                    />
+                  </div>
+                  <div className="flex items-center justify-center text-slate-500">
+                    <span>to</span>
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                      placeholder="End Date"
+                    />
+                  </div>
+                  {(startDate || endDate) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearDates}
+                      className="text-slate-400 hover:text-white"
+                    >
+                      Clear Dates
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -198,13 +252,13 @@ export default function HistoryPage() {
                             </td>
                             <td className="px-6 py-4 text-slate-300">
                               <div className="flex flex-wrap gap-1">
-                                {audit.clinicalConditions.slice(0, 2).map((c) => (
-                                  <span key={c} className="px-2 py-0.5 rounded-full bg-slate-800 text-xs border border-white/10">
+                                {audit.clinicalConditions.slice(0, 2).map((c, idx) => (
+                                  <span key={`${audit.id}-condition-${idx}`} className="px-2 py-0.5 rounded-full bg-slate-800 text-xs border border-white/10">
                                     {c}
                                   </span>
                                 ))}
                                 {audit.clinicalConditions.length > 2 && (
-                                  <span key="more-conditions" className="px-2 py-0.5 rounded-full bg-slate-800 text-xs border border-white/10">
+                                  <span key={`${audit.id}-more-conditions`} className="px-2 py-0.5 rounded-full bg-slate-800 text-xs border border-white/10">
                                     +{audit.clinicalConditions.length - 2}
                                   </span>
                                 )}
@@ -222,7 +276,7 @@ export default function HistoryPage() {
                               </span>
                             </td>
                             <td className="px-6 py-4 font-bold text-white">
-                              {audit.riskScore}%
+                              {audit.riskScore}
                             </td>
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end space-x-2">

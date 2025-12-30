@@ -190,3 +190,34 @@ async def change_password(
         )
     
     return {"message": "Password updated successfully"}
+
+
+# Alias endpoints for frontend compatibility
+@router.get("/profile", response_model=UserProfileResponse)
+async def get_user_profile_alias(current_user: User = Depends(get_current_user)):
+    """
+    Alias for /me endpoint - Get current user's profile with quota information.
+    """
+    return await get_user_profile(current_user)
+
+
+@router.put("/profile", response_model=User)
+async def update_user_profile_alias(
+    update_data: ProfileUpdateRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Alias for /me endpoint - Update current user's profile.
+    """
+    return await update_user_profile(update_data, current_user)
+
+
+@router.post("/change-password")
+async def change_password_alias(
+    password_data: PasswordChangeRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Alias for /me/password endpoint - Change current user's password.
+    """
+    return await change_password(password_data, current_user)

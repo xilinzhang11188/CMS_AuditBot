@@ -86,7 +86,7 @@ async def analyze_audit(
         
         # 5. Calculate risk level (validate OpenAI's assessment)
         missing_count = len(analysis_result["missingRequirements"])
-        if missing_count >= 3:
+        if missing_count >= 2:
             risk_level = RiskLevel.HIGH
         elif missing_count >= 1:
             risk_level = RiskLevel.MEDIUM

@@ -26,7 +26,7 @@ class OpenAIService:
         """Initialize the OpenAI service."""
         self.api_key = settings.OPENAI_API_KEY
         self.client = None
-        self.model = "gpt-4o"  # Use gpt-4o which supports JSON response format
+        self.model = "gpt-4o-mini"  # Use gpt-4o-mini which supports JSON response format
     
     def _get_client(self):
         """Get or create OpenAI client."""

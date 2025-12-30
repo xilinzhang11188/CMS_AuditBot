@@ -1,23 +1,21 @@
 """
 CCM Codes router for fetching reference data.
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from typing import List
 
 from app.models.ccm_code import CCMCode
-from app.models.user import User
-from app.middleware.auth import get_current_user
 from app.database import mongodb
 
 router = APIRouter(prefix="/api/v1/ccm-codes", tags=["CCM Codes"])
 
 
 @router.get("", response_model=List[CCMCode])
-async def get_ccm_codes(current_user: User = Depends(get_current_user)):
+async def get_ccm_codes():
     """
     Get all CCM codes reference data.
     
-    - Requires authentication
+    - Public endpoint (no authentication required)
     - Returns array of all 6 CCM billing codes with their requirements
     - Used by frontend to populate code selection dropdown
     """

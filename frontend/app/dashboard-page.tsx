@@ -78,7 +78,7 @@ export default function Dashboard() {
                 </span>
               ) : (
                 <>
-                  Your average audit score is <span className="text-teal-400 font-semibold">{avgScore}%</span> this month.
+                  Your average audit score is <span className="text-teal-400 font-semibold">{avgScore}</span> this month.
                   You have <span className="text-white font-semibold">{quotaRemaining}</span> audits remaining ({quotaUsed}/{quotaLimit} used).
                 </>
               )}
@@ -114,8 +114,8 @@ export default function Dashboard() {
             <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-white/5">
               <CardContent className="p-6 flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-400 font-medium">Avg Risk Score</p>
-                  <h3 className="text-3xl font-bold text-white mt-1">{avgScore}%</h3>
+                  <p className="text-sm text-slate-400 font-medium">Avg Audit Score</p>
+                  <h3 className="text-3xl font-bold text-white mt-1">{avgScore}</h3>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-teal-500/10 flex items-center justify-center">
                   <TrendingUp className="w-6 h-6 text-teal-400" />
@@ -178,46 +178,45 @@ export default function Dashboard() {
             <div className="space-y-4">
               {recentAudits.length > 0 ? (
                 recentAudits.map((audit, index) => (
-                <motion.div
-                  key={audit.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 * index }}
-                >
-                  <Link href={`/audit/${audit.id}`}>
-                    <Card className="hover:bg-white/5 transition-colors cursor-pointer border-white/5">
-                      <CardContent className="p-4 flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className={cn(
-                            "w-10 h-10 rounded-full flex items-center justify-center",
-                            audit.riskLevel === 'low' ? "bg-teal-500/10 text-teal-400" :
-                            audit.riskLevel === 'medium' ? "bg-amber-500/10 text-amber-400" :
-                            "bg-red-500/10 text-red-400"
-                          )}>
-                            {audit.riskLevel === 'low' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                  <Link key={audit.id} href={`/audit/${audit.id}`}>
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 * index }}
+                    >
+                      <Card className="hover:bg-white/5 transition-colors cursor-pointer border-white/5">
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className={cn(
+                              "w-10 h-10 rounded-full flex items-center justify-center",
+                              audit.riskLevel === 'low' ? "bg-teal-500/10 text-teal-400" :
+                              audit.riskLevel === 'medium' ? "bg-amber-500/10 text-amber-400" :
+                              "bg-red-500/10 text-red-400"
+                            )}>
+                              {audit.riskLevel === 'low' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-white">CCM Code {audit.codeId}</h4>
+                              <p className="text-sm text-slate-400">
+                                {new Date(audit.createdAt).toLocaleDateString()} • {audit.clinicalConditions.slice(0, 2).join(', ')}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="font-medium text-white">CCM Code {audit.codeId}</h4>
-                            <p className="text-sm text-slate-400">
-                              {new Date(audit.createdAt).toLocaleDateString()} • {audit.clinicalConditions.slice(0, 2).join(', ')}
-                            </p>
+                          <div className="text-right">
+                            <span className={cn(
+                              "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize",
+                              audit.riskLevel === 'low' ? "bg-teal-500/10 text-teal-400" :
+                              audit.riskLevel === 'medium' ? "bg-amber-500/10 text-amber-400" :
+                              "bg-red-500/10 text-red-400"
+                            )}>
+                              {audit.riskLevel} Risk
+                            </span>
+                            <p className="text-sm font-bold text-white mt-1">{audit.riskScore}</p>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <span className={cn(
-                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize",
-                            audit.riskLevel === 'low' ? "bg-teal-500/10 text-teal-400" :
-                            audit.riskLevel === 'medium' ? "bg-amber-500/10 text-amber-400" :
-                            "bg-red-500/10 text-red-400"
-                          )}>
-                            {audit.riskLevel} Risk
-                          </span>
-                          <p className="text-sm font-bold text-white mt-1">{audit.riskScore} Score</p>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
                   </Link>
-                </motion.div>
                 ))
               ) : (
                 <Card className="border-white/5">

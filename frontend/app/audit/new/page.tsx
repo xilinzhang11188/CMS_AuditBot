@@ -286,7 +286,12 @@ export default function NewAudit() {
                 
                 <div className="mt-8 flex justify-end">
                   <Button
-                    onClick={() => setStep(2)}
+                    onClick={() => {
+                      console.log('Continue button clicked, current step:', step);
+                      console.log('Pasted text length:', pastedText.length);
+                      console.log('Extracted text length:', extractedText.length);
+                      setStep(2);
+                    }}
                     disabled={(!extractedText && !pastedText) || isUploading}
                     size="lg"
                     className="w-full sm:w-auto"

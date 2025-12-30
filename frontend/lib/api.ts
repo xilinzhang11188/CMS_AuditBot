@@ -69,6 +69,16 @@ export interface ProviderStats {
   lastAuditDate: string;
 }
 
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: 'provider' | 'manager';
+  organizationId: string;
+  quotaUsed: number;
+  quotaLimit: number;
+}
+
 // API functions
 export async function fetchAudits(limit: number = 50, skip: number = 0): Promise<Audit[]> {
   try {
@@ -84,7 +94,12 @@ export async function fetchAudits(limit: number = 50, skip: number = 0): Promise
       throw new Error('Failed to fetch audits');
     }
     
-    return await response.json();
+    const data = await response.json();
+    // Transform _id to id for frontend compatibility
+    return data.map((audit: any) => ({
+      ...audit,
+      id: audit._id || audit.id
+    }));
   } catch (error) {
     console.error('Error fetching audits:', error);
     return [];
@@ -267,7 +282,15 @@ export async function fetchAuditHistory(params: AuditHistoryParams = {}): Promis
       throw new Error(errorData.detail || 'Failed to fetch audit history');
     }
 
-    return await response.json();
+    const data = await response.json();
+    // Transform _id to id for frontend compatibility
+    return {
+      ...data,
+      audits: data.audits.map((audit: any) => ({
+        ...audit,
+        id: audit._id || audit.id
+      }))
+    };
   } catch (error) {
     console.error('Error fetching audit history:', error);
     throw error;
@@ -295,6 +318,76 @@ export async function deleteAudit(auditId: string): Promise<void> {
   }
 }
 
+export async function fetchUserProfile(): Promise<UserProfile> {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(`${API_BASE_URL}/api/v1/users/profile`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to fetch user profile');
+    }
+
+    const data = await response.json();
+    return {
+      ...data,
+      id: data._id || data.id
+    };
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    throw error;
+  }
+}
+
+export async function updateUserProfile(updates: { name?: string; email?: string }): Promise<void> {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(`${API_BASE_URL}/api/v1/users/profile`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to update profile');
+    }
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
+}
+
+export async function changePassword(data: { currentPassword: string; newPassword: string }): Promise<void> {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(`${API_BASE_URL}/api/v1/users/change-password`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to change password');
+    }
+  } catch (error) {
+    console.error('Error changing password:', error);
+    throw error;
+  }
+}
+
 export async function fetchAuditById(auditId: string): Promise<Audit> {
   try {
     const token = localStorage.getItem('authToken');
@@ -317,7 +410,11 @@ export async function fetchAuditById(auditId: string): Promise<Audit> {
 
     const auditData = await response.json();
     console.log('DEBUG: Received audit data:', auditData);
-    return auditData;
+    // Transform _id to id for frontend compatibility
+    return {
+      ...auditData,
+      id: auditData._id || auditData.id
+    };
   } catch (error) {
     console.error('Error fetching audit:', error);
     throw error;

@@ -16,7 +16,7 @@ class SimpleOpenAIService:
     def __init__(self):
         """Initialize the OpenAI service."""
         self.api_key = settings.OPENAI_API_KEY
-        self.model = "gpt-4o"  # Use gpt-4o which supports JSON response format
+        self.model = "gpt-4o-mini"  # Use gpt-4o-mini which supports JSON response format
         self.base_url = "https://api.openai.com/v1"
     
     def analyze_note(
