@@ -44,6 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log('DEBUG: Attempting login to:', `${API_URL}/api/v1/auth/login`);
+      console.log('DEBUG: API_URL value:', API_URL);
+      
       const response = await fetch(`${API_URL}/api/v1/auth/login`, {
         method: 'POST',
         headers: {
@@ -52,8 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('DEBUG: Login response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('DEBUG: Login successful, user:', data.user);
         setUser(data.user);
         setToken(data.token);
         
@@ -63,9 +69,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return true;
       }
       
+      console.log('DEBUG: Login failed with status:', response.status);
+      const errorData = await response.text();
+      console.log('DEBUG: Error response:', errorData);
       return false;
     } catch (error) {
       console.error('Login error:', error);
+      console.error('DEBUG: Error details:', error);
       return false;
     }
   };
