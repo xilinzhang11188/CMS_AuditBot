@@ -13,14 +13,21 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
+    
     try {
-      await login(email, password);
+      const success = await login(email, password);
+      if (!success) {
+        setError('Invalid email or password. Please try again.');
+      }
     } catch (error) {
-      console.error(error);
+      console.error('Login error:', error);
+      setError('Login failed. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -86,6 +93,11 @@ export default function LoginPage() {
                   />
                 </div>
               </div>
+              {error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
