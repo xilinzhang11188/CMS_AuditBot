@@ -7,8 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { ShieldCheck, Loader2, Mail, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+  const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +24,10 @@ export default function LoginPage() {
     
     try {
       const success = await login(email, password);
-      if (!success) {
+      if (success) {
+        // Redirect to dashboard on successful login
+        router.push('/');
+      } else {
         setError('Invalid email or password. Please try again.');
       }
     } catch (error) {
