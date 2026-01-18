@@ -27,8 +27,6 @@ ENV/
 env/
 
 # Environment variables
-.env
-.env.local
 !.env.example
 
 # IDEs
@@ -65,3 +63,4 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+config.bat
